@@ -1,5 +1,4 @@
-#utf8
-#utf-8
+# encoding: UTF-8
 
 require 'mechanize'
 require 'pry'
@@ -29,7 +28,7 @@ class HTTPhaxer
       words = course_name.split
       @course_name = words.map do |word|
         strip_utf_whitespace(word)
-      end.join(" ")
+      end.join(" ").strip!
     end
     @course_name
   end
@@ -55,7 +54,8 @@ class HTTPhaxer
   end
 
   def requisite_names
-    name_url_map.keys
+    names = name_url_map.keys
+    names.map{|n| x = n.dup; x.strip!; x }
   end
 
   def requisite_urls
@@ -72,46 +72,30 @@ end
 
 class BuildDepdencyHash
 
-  FIRST_URL = 'http://www.openu.ac.il/courses/20595.htm'
+  class << self
 
-  def self.do_it
-    new.run_for(FIRST_URL)
-  end
-
-  attr_reader :dependency_hash, :failures
-  def initialize
-    @dependency_hash = {}
-    @failures = []
-  end
-
-  def run_for(url)
-    http_haxer = HTTPhaxer.new(url)
-
-    puts "=========================================="
-    puts "In url #{url} (#{http_haxer.course_name})"
-    puts "=========================================="
-
-    @dependency_hash[http_haxer.course_name] = http_haxer.requisite_names
-
-    other_urls = http_haxer.requisite_urls
-
-    # now do all other urls
-    other_urls.each do |url|
+    attr_reader :dependency_hash, :failures
+    def do_it(url)
+      @dependency_hash = {}
+      @failures = []
       run_for(url)
     end
 
-  rescue => e
-    @failures << [http_haxer, e]
-    # and move again to the next.
+    def run_for(url)
+      http_haxer = HTTPhaxer.new(url)
+      puts "=========================================="
+      puts "In url #{url} (#{http_haxer.course_name})"
+      puts "=========================================="
+      @dependency_hash[http_haxer.course_name] = http_haxer.requisite_names
+      other_urls = http_haxer.requisite_urls
+      other_urls.each do |url|
+        run_for(url)
+      end
+    rescue => e
+      puts "FAILURE at #{url}: #{e.message}"
+      @failures << [http_haxer, e]
+      # and move again to the next.
+    end
   end
 
 end
-
-BuildDepdencyHash.do_it
-
-puts "DONE!?"
-puts "check 'BuildDepdencyHash.dependency_hash'"
-puts 'also check @failures'
-puts 'next up, hook to graph_lessons.rb?'
-
-binding.pry

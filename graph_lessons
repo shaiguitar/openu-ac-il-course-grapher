@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+
+# encoding: UTF-8
+
+begin 
+  require 'graphviz'
+  require 'pry'
+  require './scrape_openu_il'
+rescue LoadError
+  puts 'run bundler'
+  exit(1)
+end
+
+Encoding.default_internal = Encoding::UTF_8
+Encoding.default_external = Encoding::UTF_8
+
+# Create a new graph
+g = GraphViz.new( :G, :type => :digraph )
+
+if ARGV.empty? || !ARGV[0].match(/http/)
+  puts "You must run it with a URL:"
+  examples = ['http://www.openu.ac.il/courses/20595.htm', 'http://www.openu.ac.il/courses/20594.htm', 
+              'http://www.openu.ac.il/courses/10908.htm']
+  examples.each do |eg|
+    puts "bundle exec ruby graph_lessons #{eg}"
+  end
+  puts "try again!\n"
+  exit(1)
+end
+
+BuildDepdencyHash.do_it(ARGV[0])
+
+BuildDepdencyHash.dependency_hash.each do |course_wanted, prerequisites|
+
+  next if prerequisites.empty?
+
+  node_course_wanted = g.add_nodes(course_wanted.reverse)
+  node_course_wanted.fontname = "Arial Hebrew"
+  prerequisites.each do |prerequisite|
+    node_prerequisite = g.add_nodes(prerequisite.reverse)
+    node_prerequisite.fontname = "Arial Hebrew"
+    g.add_edges(node_course_wanted, node_prerequisite)
+  end
+end
+
+#system('rm *png')
+# Generate output image
+g.output(:png => "course_dep_#{BuildDepdencyHash.dependency_hash.keys.first.gsub(" ","")}.png" )
+
+puts "Done! Check this folder for *png file."
