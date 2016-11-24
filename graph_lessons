@@ -6,6 +6,7 @@ begin
   require 'graphviz'
   require 'pry'
   require './scrape_openu_il'
+  require './dep-resolver'
 rescue LoadError
   puts 'run bundler'
   exit(1)
@@ -43,8 +44,22 @@ BuildDepdencyHash.dependency_hash.each do |course_wanted, prerequisites|
   end
 end
 
-#system('rm *png')
-# Generate output image
-g.output(:png => "course_dep_#{BuildDepdencyHash.dependency_hash.keys.first.gsub(" ","")}.png" )
+begin
+  #system('rm *png')
+  # Generate output image
+  g.output(:png => "course_dep_#{BuildDepdencyHash.dependency_hash.keys.first.gsub(" ","")}.png" )
+  puts "Done! Check this folder for *png file."
+rescue StandardError
+  puts "could not find graphviz, defaulting to text representation..."
 
-puts "Done! Check this folder for *png file."
+  h = BuildDepdencyHash.dependency_hash
+
+  # hebr-ew, reverse the chars so terminal isn't annoying.
+  # rh = Hash[ h.map{ |k,v| [k.reverse, v.reverse]} ]
+  # ?
+
+  name_node_dict = DepResolver::Node.name_node_map_from(h)
+
+  DepResolver.display_graph(name_node_dict.values)
+  DepResolver.process_graph(name_node_dict)
+end
